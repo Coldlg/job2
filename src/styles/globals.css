@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+:root {
+  /* Design system from lottery/[id].js */
+  --bg: #0b0d14;
+  --surface: #111520;
+  --surface2: #161b2e;
+  --border: rgba(99, 120, 255, 0.15);
+  --border-bright: rgba(99, 120, 255, 0.4);
+  --text: #e8eaf6;
+  --text-muted: #7b82a8;
+  --text-dim: #4a5070;
+  --accent: #6378ff;
+  --accent2: #a78bfa;
+  --gold: #f4b942;
+  --gold-dim: rgba(244, 185, 66, 0.15);
+  --green: #34d399;
+  --red: #f87171;
+  --radius: 14px;
+
+  /* Legacy palette (for backward compatibility) */
+  --color-primary: #434e78;
+  --color-secondary: #607b8f;
+  --color-tertiary: #f7e396;
+  --color-accent: #e97f4a;
+  --color-text-main: #ffffff;
+
+  /* Mapped legacy to new */
+  --background: var(--bg);
+  --foreground: var(--text);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-primary: var(--bg);
+  --color-secondary: var(--surface);
+  --color-tertiary: var(--gold);
+  --color-accent: var(--accent);
+  --color-text-main: var(--text);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-border: var(--border);
+  --color-border-bright: var(--border-bright);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+  --color-accent2: var(--accent2);
+  --color-gold: var(--gold);
+  --color-gold-dim: var(--gold-dim);
+  --color-green: var(--green);
+  --color-red: var(--red);
+
+  --font-sans: "Sora", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Sora", sans-serif;
+  min-height: 100vh;
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* Shared animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0.5;
+  }
+  50%,
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Shared utility classes */
+.glass {
+  background: rgba(17, 21, 32, 0.85);
+  backdrop-filter: blur(6px);
+}
+
+.gradient-card {
+  background: linear-gradient(135deg, var(--surface), var(--surface2));
+  border: 1px solid var(--border);
+}
+
+.gradient-header {
+  background: linear-gradient(135deg, #0f1529 0%, #161b30 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.1s,
+    opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #7b8fff;
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--border-bright);
+  background: var(--surface);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: "Sora", sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.input:focus {
+  border-color: var(--border-bright);
+  box-shadow: 0 0 0 3px rgba(99, 120, 255, 0.08);
+}
+
+.input::placeholder {
+  color: var(--text-dim);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gold-dim);
+  border: 1px solid rgba(244, 185, 66, 0.3);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 100px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}

@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Lottery {
+  id              Int      @id @default(autoincrement())
+  title           String
+  description     String
+  price           Int
+  ticketsSold     Int
+  maximumTickets  Int
+  drawDate        DateTime
+  images          String[] // Array of image URLs
+  accountNumber   String?
+  accountName     String?
+  bankName        String?
+  isHidden        Boolean  @default(false)
+  tickets         Ticket[]
+}
+
+model Car {
+  id             Int      @id @default(autoincrement())
+  make           String
+  model          String
+  year           Int
+  price          Int
+  mileageKm      Int
+  color          String
+  engine         String
+  transmission   String
+  rating         Float
+  description    String
+  images         String[]
+}
+
+model Ticket {
+  id             Int       @id @default(autoincrement())
+  lottery_id     Int
+  ticket_number  Int
+  phone_number   String
+  amount_paid    Decimal   @db.Decimal(10, 2)
+  is_winner      Boolean   @default(false)
+  created_at     DateTime  @default(now())
+  
+  lottery        Lottery @relation(fields: [lottery_id], references: [id], onDelete: Cascade)
+  
+  @@unique([lottery_id, ticket_number])
+  @@index([lottery_id])
+}
