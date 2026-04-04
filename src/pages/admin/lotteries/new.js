@@ -155,7 +155,9 @@ export default function NewLottery() {
           font-family: "Sora", sans-serif;
           font-size: 15px;
           outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
         }
 
         .input:focus {
@@ -171,6 +173,18 @@ export default function NewLottery() {
           composes: input;
           resize: vertical;
           min-height: 80px;
+          width: 100%;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 12px 14px;
+          color: var(--text);
+          font-family: "Sora", sans-serif;
+          font-size: 15px;
+          outline: none;
+          transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
         }
 
         .textarea.monospace {
@@ -344,7 +358,9 @@ export default function NewLottery() {
               </div>
 
               <div className="form-group">
-                <label className="label">Зургийн URL-ууд (мөр бүр нэг URL)</label>
+                <label className="label">
+                  Зургийн URL-ууд (мөр бүр нэг URL)
+                </label>
                 <textarea
                   name="images"
                   value={form.images}
@@ -410,11 +426,7 @@ export default function NewLottery() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="submit-btn"
-            >
+            <button type="submit" disabled={loading} className="submit-btn">
               {loading ? (
                 <>
                   <span className="spinner"></span>
