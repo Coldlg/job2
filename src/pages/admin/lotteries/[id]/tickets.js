@@ -876,8 +876,8 @@ export default function LotteryTickets() {
                       </div>
                     </div>
 
-                    {preview.invalidSampleRows &&
-                      preview.invalidSampleRows.length > 0 && (
+                    {preview.invalidRowDetails &&
+                      preview.invalidRowDetails.length > 0 && (
                         <>
                           <table className="preview-table">
                             <thead>
@@ -888,7 +888,7 @@ export default function LotteryTickets() {
                               </tr>
                             </thead>
                             <tbody>
-                              {preview.invalidSampleRows.map((row) => (
+                              {preview.invalidRowDetails.map((row) => (
                                 <tr key={row.rowNumber}>
                                   <td
                                     style={{
@@ -910,12 +910,6 @@ export default function LotteryTickets() {
                               ))}
                             </tbody>
                           </table>
-                          {preview.invalidRows > 5 && (
-                            <p className="sample-note">
-                              * Эхний 5 импорт хийгдээгүй мөрийг харуулж байна.
-                              Нийт {preview.invalidRows} шалтгаантай мөр байна.
-                            </p>
-                          )}
                         </>
                       )}
                   </>
