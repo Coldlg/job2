@@ -127,6 +127,18 @@ export default function LotteryTickets() {
           continue;
         }
 
+        if (amount_paid < ticketPrice) {
+          invalidCount++;
+          const invalidRow = {
+            rowNumber: i + 1,
+            reason: `Төлбөр дутуу (хамгийн багадаа ${ticketPrice.toLocaleString()}₮ байх ёстой)`,
+            raw: formatRowRaw(row),
+          };
+          invalidRows.push(invalidRow);
+          if (invalidSampleRows.length < 5) invalidSampleRows.push(invalidRow);
+          continue;
+        }
+
         validCount++;
         totalAmount += amount_paid;
       }
@@ -208,6 +220,15 @@ export default function LotteryTickets() {
           failedRows.push({
             rowNumber: i + 1,
             reason: "Дүн буруу",
+            raw: formatRowRaw(row),
+          });
+          continue;
+        }
+
+        if (amount_paid < lottery.price) {
+          failedRows.push({
+            rowNumber: i + 1,
+            reason: `Төлбөр дутуу (хамгийн багадаа ${lottery.price.toLocaleString()}₮ байх ёстой)`,
             raw: formatRowRaw(row),
           });
           continue;
@@ -787,6 +808,15 @@ export default function LotteryTickets() {
                 <span className="price">
                   {lottery?.price?.toLocaleString()}₮
                 </span>
+              </p>
+              <p
+                style={{
+                  marginTop: "4px",
+                  fontSize: "12px",
+                  color: "var(--text-muted)",
+                }}
+              >
+                * Төлбөр хамгийн багадаа тасалбарын үнэтэй тэнцүү байх ёстой
               </p>
             </div>
 
