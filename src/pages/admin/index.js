@@ -35,7 +35,11 @@ export default function AdminDashboard() {
         }),
       });
       if (res.ok) {
-        setLotteries(lotteries.map((l) => (l.id === id ? { ...l, isHidden: !currentHidden } : l)));
+        setLotteries(
+          lotteries.map((l) =>
+            l.id === id ? { ...l, isHidden: !currentHidden } : l,
+          ),
+        );
       }
     } catch (error) {
       console.error("Error toggling visibility:", error);
@@ -43,10 +47,13 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Энэ сугалааг устгах уу? Бүх тасалбарууд устах болно!")) return;
+    if (!confirm("Энэ сугалааг устгах уу? Бүх тасалбарууд устах болно!"))
+      return;
 
     try {
-      const res = await fetch(`/api/admin/lotteries/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/lotteries/${id}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
         setLotteries(lotteries.filter((l) => l.id !== id));
       }
@@ -449,13 +456,18 @@ export default function AdminDashboard() {
             <div className="stat-card">
               <p className="stat-label">Идэвхтэй</p>
               <p className="stat-value green">
-                {lotteries.filter((l) => new Date(l.drawDate) > new Date()).length}
+                {
+                  lotteries.filter((l) => new Date(l.drawDate) > new Date())
+                    .length
+                }
               </p>
             </div>
             <div className="stat-card">
               <p className="stat-label">Нийт тасалбар</p>
               <p className="stat-value accent">
-                {lotteries.reduce((acc, l) => acc + l.ticketsSold, 0).toLocaleString()}
+                {lotteries
+                  .reduce((acc, l) => acc + l.ticketsSold, 0)
+                  .toLocaleString()}
               </p>
             </div>
           </div>
@@ -504,17 +516,28 @@ export default function AdminDashboard() {
                       <tr key={lottery.id}>
                         <td className="id-cell">#{lottery.id}</td>
                         <td className="title-cell">{lottery.title}</td>
-                        <td className="price-cell">{lottery.price.toLocaleString()}₮</td>
+                        <td className="price-cell">
+                          {lottery.price.toLocaleString()}₮
+                        </td>
                         <td className="tickets-cell">
                           <span>{lottery.ticketsSold}</span>
-                          <span className="total">/{lottery.maximumTickets}</span>
+                          <span className="total">
+                            /{lottery.maximumTickets}
+                          </span>
                         </td>
                         <td className="date-cell">
-                          {new Date(lottery.drawDate).toLocaleDateString("mn-MN")}
+                          {new Date(lottery.drawDate).toLocaleDateString(
+                            "mn-MN",
+                          )}
                         </td>
                         <td style={{ textAlign: "center" }}>
                           <button
-                            onClick={() => handleToggleVisibility(lottery.id, lottery.isHidden)}
+                            onClick={() =>
+                              handleToggleVisibility(
+                                lottery.id,
+                                lottery.isHidden,
+                              )
+                            }
                             className={`status-btn ${lottery.isHidden ? "hidden" : "visible"}`}
                           >
                             {lottery.isHidden ? "Нуусан" : "Ил"}
@@ -532,7 +555,17 @@ export default function AdminDashboard() {
                               href={`/admin/lotteries/${lottery.id}/tickets`}
                               className="action-btn tickets"
                             >
-                              Тасалбар
+                              Тасалбарууд
+                            </Link>
+                            <Link
+                              href={`/admin/lotteries/${lottery.id}/addTickets`}
+                              className="action-btn tickets"
+                              style={{
+                                background: "rgba(52, 211, 153, 0.05)",
+                                border: "1px solid rgba(52, 211, 153, 0.2)",
+                              }}
+                            >
+                              Нэмэх
                             </Link>
                             <button
                               onClick={() => handleDelete(lottery.id)}
