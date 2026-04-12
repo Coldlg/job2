@@ -71,6 +71,7 @@ export default function LotteryTicketSearch({ lottery }) {
     return d.toLocaleTimeString("mn-MN", {
       hour: "2-digit",
       minute: "2-digit",
+      second: "2-digit",
     });
   };
 

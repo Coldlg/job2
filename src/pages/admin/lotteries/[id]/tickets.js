@@ -119,6 +119,16 @@ export default function LotteryTickets() {
     });
   };
 
+  const formatTime = (isoString) => {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    return d.toLocaleTimeString("mn-MN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
   const handlePageJump = () => {
     const val = parseInt(pageInput);
     if (val >= 1 && val <= totalPages) {
@@ -494,6 +504,10 @@ export default function LotteryTickets() {
           color: var(--text-muted);
           font-size: 13px;
         }
+        .time-cell {
+          color: var(--text-muted);
+          font-size: 13px;
+        }
 
         .winner-badge {
           display: inline-flex;
@@ -788,6 +802,7 @@ export default function LotteryTickets() {
                         <th>Утасны дугаар</th>
                         <th>Дүн</th>
                         <th>Огноо</th>
+                        <th>Цаг</th>
                         <th>Төлөв</th>
                         <th style={{ textAlign: "center" }}>Үйлдэл</th>
                       </tr>
@@ -806,6 +821,10 @@ export default function LotteryTickets() {
                           <td className="date-cell">
                             {formatDate(ticket.created_at)}
                           </td>
+                          <td className="time-cell">
+                            {formatTime(ticket.created_at)}
+                          </td>
+
                           <td>
                             {ticket.is_winner && (
                               <span className="winner-badge">🏆 Ялагч</span>

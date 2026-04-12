@@ -17,14 +17,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Clean the phone number - remove spaces and non-digit characters
-    const cleanPhone = phone.replace(/\D/g, "");
+    // Check if the search query contains non-numeric characters (name search)
+    const hasLetters = /[a-zA-Zа-яА-ЯөӨүҮ]/.test(phone);
 
     const tickets = await prisma.ticket.findMany({
       where: {
         lottery_id: parseInt(lotteryId),
         phone_number: {
-          contains: cleanPhone,
+          contains: phone, // Search by raw string (works for both phone and names)
         },
       },
       orderBy: {

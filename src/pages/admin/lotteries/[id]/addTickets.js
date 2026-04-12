@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import * as XLSX from "xlsx";
@@ -10,9 +10,16 @@ export default function AddTickets() {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [allRows, setAllRows] = useState([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [showOnlyInvalid, setShowOnlyInvalid] = useState(false);
+  const [editingRowId, setEditingRowId] = useState(null);
+  const [editValues, setEditValues] = useState({
+    date: "",
+    amount: "",
+    phone: "",
+  });
 
   useEffect(() => {
     if (id) {
@@ -35,13 +42,10 @@ export default function AddTickets() {
 
   const extractPhoneNumber = (str) => {
     if (!str || typeof str !== "string") return null;
-
     const direct = str.match(/\+?976\d{8,9}/);
     if (direct) return direct[0];
-
     const loose = str.match(/\d{8}/);
     if (loose) return loose[0];
-
     return null;
   };
 
@@ -63,9 +67,44 @@ export default function AddTickets() {
       .join(" | ");
   };
 
+  // Validation function - returns { isValid, error }
+  const validateRow = (dateStr, amountStr, phoneStr, ticketPrice) => {
+    const phone_number = extractPhoneNumber(phoneStr);
+    if (!phone_number) {
+      return {
+        isValid: false,
+        error: "Утасны дугаар буруу",
+        phone_number: null,
+      };
+    }
+
+    const amount_paid = parseFloat(amountStr);
+    if (isNaN(amount_paid)) {
+      return { isValid: false, error: "Дүн буруу", phone_number };
+    }
+
+    if (amount_paid < ticketPrice) {
+      return {
+        isValid: false,
+        error: `Төлбөр дутуу (хамгийн багадаа ${ticketPrice.toLocaleString()}₮ байх ёстой)`,
+        phone_number,
+        amount_paid,
+      };
+    }
+
+    const created_at = new Date(dateStr).toISOString();
+    return {
+      isValid: true,
+      error: null,
+      phone_number,
+      amount_paid,
+      created_at,
+    };
+  };
+
   const parsePreview = async (selectedFile) => {
     setPreviewLoading(true);
-    setPreview(null);
+    setAllRows([]);
 
     try {
       const data = await selectedFile.arrayBuffer();
@@ -74,90 +113,78 @@ export default function AddTickets() {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-      const rows = jsonData.slice(0);
+      const rows = jsonData;
       const ticketPrice = lottery?.price || 0;
 
-      let validCount = 0;
-      let invalidCount = 0;
-      let totalAmount = 0;
-      const invalidRows = [];
-      const invalidSampleRows = [];
+      const parsedRows = [];
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
+        const rowId = `row-${i}`;
+
+        // Handle insufficient columns
         if (row.length < 3) {
-          invalidCount++;
-          const invalidRow = {
+          parsedRows.push({
+            id: rowId,
             rowNumber: i + 1,
-            reason: "Багана дутуу",
-            raw: formatRowRaw(row),
-          };
-          invalidRows.push(invalidRow);
-          if (invalidSampleRows.length < 5) invalidSampleRows.push(invalidRow);
+            raw: row,
+            rawDisplay: formatRowRaw(row),
+            parsed: {
+              date: row[0] || "",
+              amount: row[1] || "",
+              phone: row[2] || "",
+            },
+            isValid: false,
+            isEdited: false,
+            isForced: false,
+            isIgnored: false,
+            error: "Багана дутуу",
+          });
           continue;
         }
 
-        const dateStr = row[0];
-        const amountStr = row[1];
-        const phoneStr = row[2];
+        const dateStr = row[0] || "";
+        const amountStr = row[1] || "";
+        const phoneStr = row[2] || "";
 
-        const phone_number = extractPhoneNumber(phoneStr);
-        if (!phone_number) {
-          invalidCount++;
-          const invalidRow = {
-            rowNumber: i + 1,
-            reason: "Утасны дугаар буруу",
-            raw: formatRowRaw(row),
-          };
-          invalidRows.push(invalidRow);
-          if (invalidSampleRows.length < 5) invalidSampleRows.push(invalidRow);
-          continue;
-        }
+        const validation = validateRow(
+          dateStr,
+          amountStr,
+          phoneStr,
+          ticketPrice,
+        );
 
-        const amount_paid = parseFloat(amountStr);
-        if (isNaN(amount_paid)) {
-          invalidCount++;
-          const invalidRow = {
-            rowNumber: i + 1,
-            reason: "Дүн буруу",
-            raw: formatRowRaw(row),
-          };
-          invalidRows.push(invalidRow);
-          if (invalidSampleRows.length < 5) invalidSampleRows.push(invalidRow);
-          continue;
-        }
-
-        if (amount_paid < ticketPrice) {
-          invalidCount++;
-          const invalidRow = {
-            rowNumber: i + 1,
-            reason: `Төлбөр дутуу (хамгийн багадаа ${ticketPrice.toLocaleString()}₮ байх ёстой)`,
-            raw: formatRowRaw(row),
-          };
-          invalidRows.push(invalidRow);
-          if (invalidSampleRows.length < 5) invalidSampleRows.push(invalidRow);
-          continue;
-        }
-
-        validCount++;
-        totalAmount += amount_paid;
+        parsedRows.push({
+          id: rowId,
+          rowNumber: i + 1,
+          raw: row,
+          rawDisplay: formatRowRaw(row),
+          parsed: {
+            date: dateStr,
+            amount: amountStr,
+            phone: phoneStr,
+            ...(validation.amount_paid !== undefined && {
+              amount_paid: validation.amount_paid,
+            }),
+            ...(validation.phone_number && {
+              phone_number: validation.phone_number,
+            }),
+            ...(validation.created_at && {
+              created_at: validation.created_at,
+            }),
+          },
+          isValid: validation.isValid,
+          isEdited: false,
+          isForced: false,
+          isIgnored: false,
+          error: validation.error,
+        });
       }
 
-      const expectedTickets =
-        ticketPrice > 0 ? Math.floor(totalAmount / ticketPrice) : 0;
-
-      setPreview({
-        totalRows: rows.length,
-        validRows: validCount,
-        invalidRows: invalidCount,
-        totalAmount,
-        expectedTickets,
-        invalidSampleRows,
-        invalidRowDetails: invalidRows,
-      });
+      setAllRows(parsedRows);
     } catch (err) {
       console.error("Error parsing preview:", err);
-      setPreview({ error: "Файл уншишгүй байна" });
+      setAllRows([]);
     } finally {
       setPreviewLoading(false);
     }
@@ -171,8 +198,158 @@ export default function AddTickets() {
     }
   };
 
+  // Row action handlers
+  const handleEditRow = (row) => {
+    setEditingRowId(row.id);
+    setEditValues({
+      date: row.parsed.date || "",
+      amount: row.parsed.amount || "",
+      phone: row.parsed.phone || "",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRowId(null);
+    setEditValues({ date: "", amount: "", phone: "" });
+  };
+
+  const handleSaveEdit = (row) => {
+    const ticketPrice = lottery?.price || 0;
+    const validation = validateRow(
+      editValues.date,
+      editValues.amount,
+      editValues.phone,
+      ticketPrice,
+    );
+
+    setAllRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== row.id) return r;
+        return {
+          ...r,
+          parsed: {
+            date: editValues.date,
+            amount: editValues.amount,
+            phone: editValues.phone,
+            ...(validation.amount_paid !== undefined && {
+              amount_paid: validation.amount_paid,
+            }),
+            ...(validation.phone_number && {
+              phone_number: validation.phone_number,
+            }),
+            ...(validation.created_at && {
+              created_at: validation.created_at,
+            }),
+          },
+          isValid: validation.isValid,
+          error: validation.error,
+          isEdited: true,
+        };
+      }),
+    );
+    setEditingRowId(null);
+    setEditValues({ date: "", amount: "", phone: "" });
+  };
+
+  const handleForceRow = (rowId) => {
+    setAllRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+
+        // When forcing, try to extract whatever data we can from the raw input
+        const dateStr = r.parsed.date || "";
+        const amountStr = r.parsed.amount || "";
+        const phoneStr = r.parsed.phone || "";
+
+        // Extract phone number - if invalid, use the raw string as fallback for forced import
+        const extractedPhone = extractPhoneNumber(phoneStr);
+        const phoneForImport = extractedPhone || phoneStr;
+
+        // Parse amount - if invalid, default to 0 or lottery price
+        const parsedAmount = parseFloat(amountStr);
+        const amountForImport = isNaN(parsedAmount) ? 0 : parsedAmount;
+
+        // Parse date - if invalid, use current date
+        let createdAt;
+        try {
+          createdAt = new Date(dateStr).toISOString();
+        } catch {
+          createdAt = new Date().toISOString();
+        }
+
+        return {
+          ...r,
+          isForced: true,
+          isIgnored: false,
+          parsed: {
+            ...r.parsed,
+            phone_number: phoneForImport,
+            amount_paid: amountForImport,
+            created_at: createdAt,
+          },
+        };
+      }),
+    );
+  };
+
+  const handleIgnoreRow = (rowId) => {
+    setAllRows((prev) =>
+      prev.map((r) =>
+        r.id === rowId ? { ...r, isIgnored: true, isForced: false } : r,
+      ),
+    );
+  };
+
+  const handleUnignoreRow = (rowId) => {
+    setAllRows((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, isIgnored: false } : r)),
+    );
+  };
+
+  // Computed stats
+  const stats = useMemo(() => {
+    const validRows = allRows.filter((r) => r.isValid && !r.isIgnored);
+    const forcedRows = allRows.filter((r) => r.isForced && !r.isIgnored);
+    const ignoredRows = allRows.filter((r) => r.isIgnored);
+    const invalidRows = allRows.filter(
+      (r) => !r.isValid && !r.isForced && !r.isIgnored,
+    );
+
+    const totalAmount = validRows.reduce(
+      (sum, r) => sum + (r.parsed.amount_paid || 0),
+      0,
+    );
+    const forcedAmount = forcedRows.reduce(
+      (sum, r) => sum + (r.parsed.amount_paid || 0),
+      0,
+    );
+
+    const ticketPrice = lottery?.price || 1;
+    const expectedTickets = Math.floor(
+      (totalAmount + forcedAmount) / ticketPrice,
+    );
+
+    return {
+      total: allRows.length,
+      valid: validRows.length,
+      forced: forcedRows.length,
+      ignored: ignoredRows.length,
+      invalid: invalidRows.length,
+      totalAmount: totalAmount + forcedAmount,
+      expectedTickets,
+    };
+  }, [allRows, lottery?.price]);
+
+  // Filtered rows for display
+  const displayRows = useMemo(() => {
+    if (showOnlyInvalid) {
+      return allRows.filter((r) => !r.isValid && !r.isIgnored);
+    }
+    return allRows;
+  }, [allRows, showOnlyInvalid]);
+
   const handleImport = async () => {
-    if (!file) {
+    if (!file || allRows.length === 0) {
       alert("Файл сонгоно уу");
       return;
     }
@@ -180,71 +357,61 @@ export default function AddTickets() {
     setImporting(true);
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-      const rows = jsonData.slice(0);
       const tickets = [];
       const failedRows = [];
 
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (row.length < 3) {
+      for (const row of allRows) {
+        // Skip ignored rows
+        if (row.isIgnored) {
           failedRows.push({
-            rowNumber: i + 1,
-            reason: "Багана дутуу",
-            raw: formatRowRaw(row),
+            rowNumber: row.rowNumber,
+            reason: "Импортөөс хассан",
+            raw: row.rawDisplay,
           });
           continue;
         }
 
-        const dateStr = row[0];
-        const amountStr = row[1];
-        const phoneStr = row[2];
+        // Include valid rows and forced rows
+        if (row.isValid || row.isForced) {
+          // For forced rows, use the parsed data directly (even if invalid)
+          if (row.isForced) {
+            tickets.push({
+              phone_number: row.parsed.phone_number || row.parsed.phone || "",
+              amount_paid:
+                row.parsed.amount_paid || parseFloat(row.parsed.amount) || 0,
+              created_at: row.parsed.created_at || new Date().toISOString(),
+            });
+          } else {
+            // For valid rows, use validated data
+            const { date, amount, phone } = row.parsed;
+            const ticketPrice = lottery?.price || 0;
+            const validation = validateRow(date, amount, phone, ticketPrice);
 
-        const phone_number = extractPhoneNumber(phoneStr);
-        if (!phone_number) {
+            if (validation.isValid) {
+              tickets.push({
+                phone_number: validation.phone_number,
+                amount_paid: validation.amount_paid,
+                created_at: validation.created_at,
+              });
+            } else {
+              failedRows.push({
+                rowNumber: row.rowNumber,
+                reason: validation.error,
+                raw: row.rawDisplay,
+              });
+            }
+          }
+        } else {
           failedRows.push({
-            rowNumber: i + 1,
-            reason: "Утасны дугаар буруу",
-            raw: formatRowRaw(row),
+            rowNumber: row.rowNumber,
+            reason: row.error,
+            raw: row.rawDisplay,
           });
-          continue;
         }
-
-        const amount_paid = parseFloat(amountStr);
-        if (isNaN(amount_paid)) {
-          failedRows.push({
-            rowNumber: i + 1,
-            reason: "Дүн буруу",
-            raw: formatRowRaw(row),
-          });
-          continue;
-        }
-
-        if (amount_paid < lottery.price) {
-          failedRows.push({
-            rowNumber: i + 1,
-            reason: `Төлбөр дутуу (хамгийн багадаа ${lottery.price.toLocaleString()}₮ байх ёстой)`,
-            raw: formatRowRaw(row),
-          });
-          continue;
-        }
-
-        const created_at = new Date(dateStr).toISOString();
-
-        tickets.push({
-          phone_number,
-          amount_paid,
-          created_at,
-        });
       }
 
       if (tickets.length === 0) {
-        alert("Файлын өгөгдөл буруу байна");
+        alert("Импортод оруулах тасалбар байхгүй байна");
         setImporting(false);
         return;
       }
@@ -262,13 +429,15 @@ export default function AddTickets() {
         const data = await res.json();
         setImportResult({
           success: true,
-          imported: data.createdCount || 0,
+          imported: data.createdCount || tickets.length,
           failed: failedRows.length,
           failedRows,
-          message: data.message,
+          message: data.message || "Амжилттай импорт хийгдлээ",
         });
         setFile(null);
-        setPreview(null);
+        setAllRows([]);
+        setShowOnlyInvalid(false);
+        setEditingRowId(null);
         document.getElementById("file-input").value = "";
       } else {
         const error = await res.json();
@@ -280,6 +449,15 @@ export default function AddTickets() {
     } finally {
       setImporting(false);
     }
+  };
+
+  const handleClearAll = () => {
+    setFile(null);
+    setAllRows([]);
+    setImportResult(null);
+    setShowOnlyInvalid(false);
+    setEditingRowId(null);
+    document.getElementById("file-input").value = "";
   };
 
   if (loading) {
@@ -536,7 +714,7 @@ export default function AddTickets() {
           width: 100%;
           border-collapse: collapse;
           margin-top: 16px;
-          overflox-x: scroll;
+          overflow-x: scroll;
         }
 
         .preview-table th {
@@ -548,7 +726,6 @@ export default function AddTickets() {
           letter-spacing: 0.05em;
           padding: 10px 12px;
           border-bottom: 1px solid var(--border);
-          overflow-x: scroll;
         }
 
         .preview-table td {
@@ -556,38 +733,240 @@ export default function AddTickets() {
           font-size: 13px;
           color: var(--text);
           border-bottom: 1px solid rgba(99, 120, 255, 0.08);
-          overflow-x: scroll;
         }
 
         .preview-table tr:last-child td {
           border-bottom: none;
-          overflow-x: scroll;
         }
 
         .preview-table .phone {
           font-family: "JetBrains Mono", monospace;
           font-weight: 600;
-          overflow-x: scroll;
         }
 
         .preview-table .amount {
           color: var(--accent);
           font-family: "JetBrains Mono", monospace;
           font-weight: 600;
-          overflow-x: scroll;
         }
 
         .preview-table .tickets {
           color: var(--gold);
           font-weight: 700;
           text-align: right;
-          overflow-x: scroll;
         }
 
         .preview-table .date {
           color: var(--text-muted);
           font-size: 12px;
-          overflow-x: scroll;
+        }
+
+        /* Row states */
+        .row-invalid {
+          background: rgba(248, 113, 113, 0.08);
+        }
+
+        .row-invalid:hover {
+          background: rgba(248, 113, 113, 0.12);
+        }
+
+        .row-edited {
+          background: rgba(251, 191, 36, 0.08);
+        }
+
+        .row-edited:hover {
+          background: rgba(251, 191, 36, 0.12);
+        }
+
+        .row-forced {
+          background: rgba(52, 211, 153, 0.08);
+        }
+
+        .row-ignored {
+          opacity: 0.5;
+          background: rgba(99, 120, 255, 0.05);
+        }
+
+        .row-ignored td {
+          text-decoration: line-through;
+        }
+
+        /* Row actions */
+        .row-actions {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .action-btn {
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+          border: 1px solid transparent;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .action-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .action-btn-edit {
+          background: var(--surface2);
+          border-color: var(--border);
+          color: var(--text);
+        }
+
+        .action-btn-edit:hover:not(:disabled) {
+          background: var(--surface);
+          border-color: var(--border-bright);
+        }
+
+        .action-btn-save {
+          background: var(--green);
+          color: #000;
+        }
+
+        .action-btn-save:hover:not(:disabled) {
+          background: #34d399;
+        }
+
+        .action-btn-force {
+          background: rgba(52, 211, 153, 0.15);
+          border-color: rgba(52, 211, 153, 0.3);
+          color: var(--green);
+        }
+
+        .action-btn-force:hover:not(:disabled) {
+          background: rgba(52, 211, 153, 0.25);
+        }
+
+        .action-btn-ignore {
+          background: rgba(99, 120, 255, 0.15);
+          border-color: rgba(99, 120, 255, 0.3);
+          color: var(--text-muted);
+        }
+
+        .action-btn-ignore:hover:not(:disabled) {
+          background: rgba(99, 120, 255, 0.25);
+        }
+
+        .action-btn-unignore {
+          background: rgba(52, 211, 153, 0.15);
+          border-color: rgba(52, 211, 153, 0.3);
+          color: var(--green);
+        }
+
+        /* Edit inputs */
+        .edit-input {
+          background: var(--surface2);
+          border: 1px solid var(--border-bright);
+          border-radius: 6px;
+          padding: 6px 10px;
+          font-size: 13px;
+          color: var(--text);
+          font-family: "JetBrains Mono", monospace;
+          width: 100%;
+          transition: border-color 0.15s;
+        }
+
+        .edit-input:focus {
+          outline: none;
+          border-color: var(--accent);
+        }
+
+        .edit-input.invalid {
+          border-color: var(--red);
+        }
+
+        /* Filter toggle */
+        .filter-toggle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .toggle-switch {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .toggle-switch.active {
+          background: var(--accent);
+          border-color: var(--accent);
+        }
+
+        .toggle-knob {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 18px;
+          height: 18px;
+          background: var(--text);
+          border-radius: 50%;
+          transition: transform 0.2s;
+        }
+
+        .toggle-switch.active .toggle-knob {
+          transform: translateX(20px);
+          background: #fff;
+        }
+
+        .toggle-label {
+          font-size: 13px;
+          color: var(--text-muted);
+        }
+
+        /* Error badge */
+        .error-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          background: rgba(248, 113, 113, 0.1);
+          border: 1px solid rgba(248, 113, 113, 0.2);
+          border-radius: 4px;
+          font-size: 11px;
+          color: var(--red);
+          font-weight: 600;
+        }
+
+        .forced-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          background: rgba(52, 211, 153, 0.1);
+          border: 1px solid rgba(52, 211, 153, 0.2);
+          border-radius: 4px;
+          font-size: 11px;
+          color: var(--green);
+          font-weight: 600;
+        }
+
+        .ignored-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          background: rgba(99, 120, 255, 0.1);
+          border: 1px solid rgba(99, 120, 255, 0.2);
+          border-radius: 4px;
+          font-size: 11px;
+          color: var(--text-muted);
+          font-weight: 600;
         }
 
         .loading-preview {
@@ -838,111 +1217,388 @@ export default function AddTickets() {
               </div>
             )}
 
-            {preview && !previewLoading && (
+            {allRows.length > 0 && !previewLoading && (
               <div className="preview-section">
-                {preview.error ? (
-                  <div className="error-preview">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" x2="12" y1="8" y2="12" />
-                      <line x1="12" x2="12.01" y1="16" y2="16" />
-                    </svg>
-                    {preview.error}
+                <div className="preview-title">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  Файлын урьдчилсан харац
+                </div>
+
+                {/* Filter Toggle */}
+                <div className="filter-toggle">
+                  <div
+                    className={`toggle-switch ${showOnlyInvalid ? "active" : ""}`}
+                    onClick={() => setShowOnlyInvalid(!showOnlyInvalid)}
+                  >
+                    <div className="toggle-knob" />
                   </div>
-                ) : (
-                  <>
-                    <div className="preview-title">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                      Файлын урьдчилсан харац
-                    </div>
+                  <span className="toggle-label">
+                    Зөвхөн буруу мөрүүдийг харах ({stats.invalid})
+                  </span>
+                </div>
 
-                    <div className="stats-grid">
-                      <div className="stat-box">
-                        <p className="stat-label">Нийт мөр</p>
-                        <p className="stat-value total">{preview.totalRows}</p>
-                      </div>
-                      <div className="stat-box">
-                        <p className="stat-label">Хүчинтэй</p>
-                        <p className="stat-value valid">{preview.validRows}</p>
-                      </div>
-                      <div className="stat-box">
-                        <p className="stat-label">Буруу</p>
-                        <p className="stat-value invalid">
-                          {preview.invalidRows}
-                        </p>
-                      </div>
-                      <div className="stat-box">
-                        <p className="stat-label">Нийт дүн</p>
-                        <p className="stat-value amount">
-                          {preview.totalAmount.toLocaleString()}₮
-                        </p>
-                      </div>
-                      <div className="stat-box">
-                        <p className="stat-label">Тасалбар тоо</p>
-                        <p className="stat-value tickets">
-                          ~{preview.expectedTickets.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
+                {/* Stats */}
+                <div className="stats-grid">
+                  <div className="stat-box">
+                    <p className="stat-label">Нийт мөр</p>
+                    <p className="stat-value total">{stats.total}</p>
+                  </div>
+                  <div className="stat-box">
+                    <p className="stat-label">Хүчинтэй</p>
+                    <p className="stat-value valid">{stats.valid}</p>
+                  </div>
+                  <div className="stat-box">
+                    <p className="stat-label">Хүчээр нэмэх</p>
+                    <p className="stat-value forced">{stats.forced}</p>
+                  </div>
+                  <div className="stat-box">
+                    <p className="stat-label">Буруу</p>
+                    <p className="stat-value invalid">{stats.invalid}</p>
+                  </div>
+                  <div className="stat-box">
+                    <p className="stat-label">Хассан</p>
+                    <p
+                      className="stat-value ignored"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {stats.ignored}
+                    </p>
+                  </div>
+                  <div className="stat-box">
+                    <p className="stat-label">Нийт дүн</p>
+                    <p className="stat-value amount">
+                      {stats.totalAmount.toLocaleString()}₮
+                    </p>
+                  </div>
+                  <div className="stat-box">
+                    <p className="stat-label">Тасалбар тоо</p>
+                    <p className="stat-value tickets">
+                      ~{stats.expectedTickets.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
 
-                    {preview.invalidRowDetails &&
-                      preview.invalidRowDetails.length > 0 && (
-                        <>
-                          <table className="preview-table">
-                            <thead>
-                              <tr>
-                                <th>Мөр</th>
-                                <th>Шалтгаан</th>
-                                <th>Raw</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {preview.invalidRowDetails.map((row) => (
-                                <tr key={row.rowNumber}>
-                                  <td
-                                    style={{
-                                      color: "var(--text-dim)",
-                                      fontFamily: "JetBrains Mono, monospace",
-                                    }}
+                {/* Preview Table */}
+                <table className="preview-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "60px" }}>Мөр</th>
+                      <th style={{ width: "140px" }}>Огноо</th>
+                      <th style={{ width: "100px" }}>Дүн</th>
+                      <th style={{ width: "140px" }}>Утас</th>
+                      <th>Төлөв</th>
+                      <th style={{ width: "200px" }}>Үйлдэл</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayRows.map((row) => {
+                      const isEditing = editingRowId === row.id;
+                      const isIgnored = row.isIgnored;
+                      const isForced = row.isForced;
+
+                      let rowClass = "";
+                      if (isIgnored) rowClass = "row-ignored";
+                      else if (row.isEdited) rowClass = "row-edited";
+                      else if (!row.isValid) rowClass = "row-invalid";
+
+                      return (
+                        <tr key={row.id} className={rowClass}>
+                          <td
+                            style={{
+                              color: "var(--text-dim)",
+                              fontFamily: "JetBrains Mono, monospace",
+                            }}
+                          >
+                            #{row.rowNumber}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                className="edit-input"
+                                value={editValues.date}
+                                onChange={(e) =>
+                                  setEditValues({
+                                    ...editValues,
+                                    date: e.target.value,
+                                  })
+                                }
+                                placeholder="Огноо"
+                              />
+                            ) : (
+                              <span className="date">
+                                {row.parsed.date || "-"}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                className={`edit-input ${!row.isValid && row.error?.includes("Дүн") ? "invalid" : ""}`}
+                                value={editValues.amount}
+                                onChange={(e) =>
+                                  setEditValues({
+                                    ...editValues,
+                                    amount: e.target.value,
+                                  })
+                                }
+                                placeholder="Дүн"
+                              />
+                            ) : (
+                              <span className="amount">
+                                {row.parsed.amount_paid
+                                  ? row.parsed.amount_paid.toLocaleString()
+                                  : row.parsed.amount || "-"}
+                                ₮
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                className={`edit-input ${!row.isValid && row.error?.includes("Утас") ? "invalid" : ""}`}
+                                value={editValues.phone}
+                                onChange={(e) =>
+                                  setEditValues({
+                                    ...editValues,
+                                    phone: e.target.value,
+                                  })
+                                }
+                                placeholder="Утас"
+                              />
+                            ) : (
+                              <span className="phone">
+                                {row.parsed.phone_number ||
+                                  row.parsed.phone ||
+                                  "-"}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "6px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              {isIgnored && (
+                                <span className="ignored-badge">
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                   >
-                                    #{row.rowNumber}
-                                  </td>
-                                  <td className="failed-row-reason">
-                                    {row.reason}
-                                  </td>
-                                  <td className="failed-row-raw">
-                                    {typeof row.raw === "object"
-                                      ? JSON.stringify(row.raw)
-                                      : row.raw}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </>
-                      )}
-                  </>
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="18" x2="6" y1="6" y2="18" />
+                                    <line x1="6" x2="18" y1="6" y2="18" />
+                                  </svg>
+                                  Хассан
+                                </span>
+                              )}
+                              {isForced && (
+                                <span className="forced-badge">
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                  </svg>
+                                  Нэмнэ
+                                </span>
+                              )}
+                              {!row.isValid && !isIgnored && !isForced && (
+                                <span className="error-badge">
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" x2="12" y1="8" y2="12" />
+                                    <line x1="12" x2="12.01" y1="16" y2="16" />
+                                  </svg>
+                                  {row.error}
+                                </span>
+                              )}
+                              {row.isValid && !isIgnored && (
+                                <span
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "var(--green)",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  ✓ Хүчинтэй
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="row-actions">
+                              {isIgnored ? (
+                                <button
+                                  className="action-btn action-btn-unignore"
+                                  onClick={() => handleUnignoreRow(row.id)}
+                                >
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <polyline points="1 4 1 10 7 10" />
+                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                                  </svg>
+                                  Буцаах
+                                </button>
+                              ) : isEditing ? (
+                                <>
+                                  <button
+                                    className="action-btn action-btn-save"
+                                    onClick={() => handleSaveEdit(row)}
+                                  >
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    Хадгалах
+                                  </button>
+                                  <button
+                                    className="action-btn action-btn-edit"
+                                    onClick={handleCancelEdit}
+                                  >
+                                    Болих
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  {!row.isValid && (
+                                    <button
+                                      className="action-btn action-btn-edit"
+                                      onClick={() => handleEditRow(row)}
+                                    >
+                                      <svg
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      >
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                        <path d="m15 5 4 4" />
+                                      </svg>
+                                      Засах
+                                    </button>
+                                  )}
+                                  {!row.isValid && (
+                                    <button
+                                      className="action-btn action-btn-force"
+                                      onClick={() => handleForceRow(row.id)}
+                                    >
+                                      <svg
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      >
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                                        <path d="m9 12 2 2 4-4" />
+                                      </svg>
+                                      Нэмнэ
+                                    </button>
+                                  )}
+                                  <button
+                                    className="action-btn action-btn-ignore"
+                                    onClick={() => handleIgnoreRow(row.id)}
+                                  >
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <circle cx="12" cy="12" r="10" />
+                                      <line x1="18" x2="6" y1="6" y2="18" />
+                                      <line x1="6" x2="18" y1="6" y2="18" />
+                                    </svg>
+                                    Хасах
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {displayRows.length === 0 && allRows.length > 0 && (
+                  <div
+                    style={{
+                      padding: "24px",
+                      textAlign: "center",
+                      color: "var(--text-muted)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Буруу мөр байхгүй байна. Бүх мөр хүчинтэй!
+                  </div>
                 )}
               </div>
             )}
@@ -1076,12 +1732,87 @@ export default function AddTickets() {
                       </div>
                     </div>
                   )}
+
+                <button
+                  onClick={handleClearAll}
+                  className="submit-btn"
+                  style={{
+                    marginTop: "16px",
+                    background: "var(--surface2)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                  Шинэ файл сонгох
+                </button>
+              </div>
+            )}
+
+            {/* Import summary */}
+            {allRows.length > 0 && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "12px 16px",
+                  background: "rgba(52, 211, 153, 0.08)",
+                  border: "1px solid rgba(52, 211, 153, 0.2)",
+                  borderRadius: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--green)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                  Импорт хийгдэнэ:{" "}
+                  <strong style={{ color: "var(--green)" }}>
+                    {stats.valid + stats.forced}
+                  </strong>{" "}
+                  тасалбар
+                  {stats.ignored > 0 && (
+                    <span
+                      style={{ marginLeft: "8px", color: "var(--text-muted)" }}
+                    >
+                      (хассан: {stats.ignored})
+                    </span>
+                  )}
+                </span>
               </div>
             )}
 
             <button
               onClick={handleImport}
-              disabled={importing || !file || !preview || preview.error}
+              disabled={
+                importing ||
+                !file ||
+                allRows.length === 0 ||
+                stats.valid + stats.forced === 0
+              }
               className="submit-btn"
               style={{ marginTop: "20px" }}
             >
@@ -1106,7 +1837,7 @@ export default function AddTickets() {
                     <polyline points="7 10 12 15 17 10" />
                     <line x1="12" x2="12" y1="15" y2="3" />
                   </svg>
-                  Импорт хийх
+                  Импорт хийх ({stats.valid + stats.forced} тасалбар)
                 </>
               )}
             </button>
