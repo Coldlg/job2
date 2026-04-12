@@ -7,10 +7,18 @@ const prisma = new PrismaClient({
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
-    const { lotteryId, page = 1, limit = 50 } = req.query;
+    const { lotteryId, page = 1, limit = 50, phone } = req.query;
 
     try {
       const where = lotteryId ? { lottery_id: parseInt(lotteryId) } : {};
+
+      // Add phone number search if provided
+      if (phone && phone.trim()) {
+        where.phone_number = {
+          contains: phone.trim(),
+          mode: "insensitive",
+        };
+      }
 
       const [tickets, total] = await Promise.all([
         prisma.ticket.findMany({
@@ -77,7 +85,9 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error("Error creating ticket:", error);
       if (error.code === "P2002") {
-        return res.status(400).json({ error: "Ticket number already exists for this lottery" });
+        return res
+          .status(400)
+          .json({ error: "Ticket number already exists for this lottery" });
       }
       return res.status(500).json({ error: "Failed to create ticket" });
     }

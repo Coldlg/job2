@@ -11,17 +11,40 @@ export default function LotteryTickets() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalTickets, setTotalTickets] = useState(0);
   const [lotteryTitle, setLotteryTitle] = useState("");
+  const [pageInput, setPageInput] = useState("1");
+  const [searchPhone, setSearchPhone] = useState("");
 
   useEffect(() => {
     if (id) {
       fetchTickets();
     }
-  }, [id, page]);
+  }, [id, page, searchPhone]);
+
+  const handleSearchChange = (value) => {
+    setSearchPhone(value);
+    if (page !== 1) {
+      setPage(1); // Reset to first page when starting a new search
+    }
+  };
+
+  useEffect(() => {
+    setPageInput(page.toString());
+  }, [page]);
 
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/tickets?lotteryId=${id}&page=${page}&limit=50`);
+      const params = new URLSearchParams({
+        lotteryId: id,
+        page: page.toString(),
+        limit: "50",
+      });
+
+      if (searchPhone.trim()) {
+        params.append("phone", searchPhone.trim());
+      }
+
+      const res = await fetch(`/api/admin/tickets?${params.toString()}`);
       const data = await res.json();
 
       if (res.ok) {
@@ -73,8 +96,8 @@ export default function LotteryTickets() {
       if (res.ok) {
         setTickets(
           tickets.map((t) =>
-            t.id === ticketId ? { ...t, is_winner: !currentIsWinner } : t
-          )
+            t.id === ticketId ? { ...t, is_winner: !currentIsWinner } : t,
+          ),
         );
       }
     } catch (err) {
@@ -95,6 +118,130 @@ export default function LotteryTickets() {
       day: "2-digit",
     });
   };
+
+  const handlePageJump = () => {
+    const val = parseInt(pageInput);
+    if (val >= 1 && val <= totalPages) {
+      setPage(val);
+    } else {
+      setPageInput(page.toString());
+    }
+  };
+
+  const handlePageInputKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handlePageJump();
+    }
+  };
+
+  const renderPageButtons = () => {
+    const buttons = [];
+    const maxVisible = 5;
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    // First page
+    if (start > 1) {
+      buttons.push(
+        <button key={1} className="page-btn" onClick={() => setPage(1)}>
+          1
+        </button>,
+      );
+      if (start > 2) {
+        buttons.push(
+          <span key="dots1" className="page-dots">
+            ...
+          </span>,
+        );
+      }
+    }
+
+    // Page numbers
+    for (let i = start; i <= end; i++) {
+      buttons.push(
+        <button
+          key={i}
+          className={`page-btn ${i === page ? "active" : ""}`}
+          onClick={() => setPage(i)}
+        >
+          {i}
+        </button>,
+      );
+    }
+
+    // Last page
+    if (end < totalPages) {
+      if (end < totalPages - 1) {
+        buttons.push(
+          <span key="dots2" className="page-dots">
+            ...
+          </span>,
+        );
+      }
+      buttons.push(
+        <button
+          key={totalPages}
+          className="page-btn"
+          onClick={() => setPage(totalPages)}
+        >
+          {totalPages}
+        </button>,
+      );
+    }
+
+    return buttons;
+  };
+
+  const renderPagination = () => (
+    <div className="pagination">
+      <div className="pagination-info">
+        <span>{page}</span> / <span>{totalPages}</span>
+      </div>
+      <div className="pagination-controls">
+        <div className="pagination-btns">
+          <button
+            className="page-btn"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+          >
+            Өмнөх
+          </button>
+          {renderPageButtons()}
+          <button
+            className="page-btn"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            Дараах
+          </button>
+        </div>
+        <div className="page-jumper">
+          <input
+            type="number"
+            min="1"
+            max={totalPages}
+            value={pageInput}
+            onChange={(e) => setPageInput(e.target.value)}
+            onBlur={handlePageJump}
+            onKeyDown={handlePageInputKeyDown}
+            className="page-input"
+            placeholder="Хуудас"
+          />
+          <button
+            className="page-jump-btn"
+            onClick={handlePageJump}
+            title="Шилжих"
+          >
+            Jump
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -210,6 +357,57 @@ export default function LotteryTickets() {
         .content-title {
           font-size: 17px;
           font-weight: 700;
+          color: var(--text);
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .search-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .search-input {
+          width: 200px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 8px 12px;
+          color: var(--text);
+          font-size: 14px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+          border-color: var(--accent);
+        }
+
+        .clear-search-btn {
+          position: absolute;
+          right: 8px;
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          font-size: 14px;
+          padding: 2px;
+          border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+
+        .clear-search-btn:hover {
+          background: var(--surface2);
           color: var(--text);
         }
 
@@ -377,9 +575,54 @@ export default function LotteryTickets() {
           font-weight: 600;
         }
 
+        .pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
         .pagination-btns {
           display: flex;
           gap: 8px;
+        }
+
+        .page-jumper {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .page-input {
+          width: 60px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          padding: 6px 8px;
+          color: var(--text);
+          font-size: 13px;
+          text-align: center;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        .page-input:focus {
+          border-color: var(--accent);
+        }
+
+        .page-jump-btn {
+          background: var(--accent);
+          border: 1px solid var(--accent);
+          color: #fff;
+          padding: 6px 8px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .page-jump-btn:hover {
+          background: #7b8fff;
         }
 
         .page-btn {
@@ -402,6 +645,19 @@ export default function LotteryTickets() {
         .page-btn:disabled {
           opacity: 0.4;
           cursor: not-allowed;
+        }
+
+        .page-btn.active {
+          background: var(--accent);
+          color: #fff;
+          border-color: var(--accent);
+        }
+
+        .page-dots {
+          padding: 6px 8px;
+          color: var(--text-muted);
+          font-size: 13px;
+          user-select: none;
         }
 
         .empty-state {
@@ -451,42 +707,78 @@ export default function LotteryTickets() {
 
         <main className="main">
           <div className="lottery-info">
-            <div className="lottery-title">{lotteryTitle || `Сугалаа #${id}`}</div>
+            <div className="lottery-title">
+              {lotteryTitle || `Сугалаа #${id}`}
+            </div>
             <div className="lottery-stats">
               <div className="stat">
-                <div className="stat-label">Нийт</div>
+                <div className="stat-label">
+                  {searchPhone ? "Хайлтын үр дүн" : "Нийт"}
+                </div>
                 <div className="stat-value">{totalTickets}</div>
               </div>
+              {searchPhone && (
+                <div className="stat">
+                  <div className="stat-label">Хайлт</div>
+                  <div className="stat-value" style={{ color: "var(--gold)" }}>
+                    {searchPhone}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="content-card">
             <div className="content-header">
               <h2 className="content-title">Тасалбарын жагсаалт</h2>
-              <Link href={`/admin/lotteries/${id}/addTickets`} className="add-btn">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              <div className="header-actions">
+                <div className="search-container">
+                  <input
+                    type="text"
+                    value={searchPhone}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder="Утасны дугаар хайх..."
+                    className="search-input"
+                  />
+                  {searchPhone && (
+                    <button
+                      onClick={() => setSearchPhone("")}
+                      className="clear-search-btn"
+                      title="Цэвэрлэх"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <Link
+                  href={`/admin/lotteries/${id}/addTickets`}
+                  className="add-btn"
                 >
-                  <line x1="12" x2="12" y1="5" y2="19" />
-                  <line x1="5" x2="19" y1="12" y2="12" />
-                </svg>
-                Тасалбар нэмэх
-              </Link>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="12" x2="12" y1="5" y2="19" />
+                    <line x1="5" x2="19" y1="12" y2="12" />
+                  </svg>
+                  Тасалбар нэмэх
+                </Link>
+              </div>
             </div>
-
             {loading ? (
               <div className="empty-state">Уншиж байна...</div>
             ) : tickets.length === 0 ? (
               <div className="empty-state">Тасалбар олдсонгүй</div>
             ) : (
               <>
+                {renderPagination()}
+
                 <div className="table-container">
                   <table className="table">
                     <thead>
@@ -504,15 +796,19 @@ export default function LotteryTickets() {
                       {tickets.map((ticket) => (
                         <tr key={ticket.id}>
                           <td className="id-cell">#{ticket.id}</td>
-                          <td className="ticket-num-cell">#{ticket.ticket_number}</td>
+                          <td className="ticket-num-cell">
+                            #{ticket.ticket_number}
+                          </td>
                           <td className="phone-cell">{ticket.phone_number}</td>
-                          <td className="amount-cell">{ticket.amount_paid.toLocaleString()}₮</td>
-                          <td className="date-cell">{formatDate(ticket.created_at)}</td>
+                          <td className="amount-cell">
+                            {ticket.amount_paid.toLocaleString()}₮
+                          </td>
+                          <td className="date-cell">
+                            {formatDate(ticket.created_at)}
+                          </td>
                           <td>
                             {ticket.is_winner && (
-                              <span className="winner-badge">
-                                🏆 Ялагч
-                              </span>
+                              <span className="winner-badge">🏆 Ялагч</span>
                             )}
                           </td>
                           <td>
@@ -525,7 +821,10 @@ export default function LotteryTickets() {
                               </button>
                               <button
                                 onClick={() =>
-                                  handleToggleWinner(ticket.id, ticket.is_winner)
+                                  handleToggleWinner(
+                                    ticket.id,
+                                    ticket.is_winner,
+                                  )
                                 }
                                 className="action-btn winner"
                               >
@@ -547,27 +846,7 @@ export default function LotteryTickets() {
                   </table>
                 </div>
 
-                <div className="pagination">
-                  <div className="pagination-info">
-                    <span>{page}</span> / <span>{totalPages}</span>
-                  </div>
-                  <div className="pagination-btns">
-                    <button
-                      className="page-btn"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page <= 1}
-                    >
-                      Өмнөх
-                    </button>
-                    <button
-                      className="page-btn"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page >= totalPages}
-                    >
-                      Дараах
-                    </button>
-                  </div>
-                </div>
+                {renderPagination()}
               </>
             )}
           </div>
