@@ -37,38 +37,18 @@ export function proxy(request: NextRequest) {
     if (!SKIP_IP_CHECK && !ALLOWED_IPS.includes(ip)) {
       console.log(`[BLOCKED] IP not in whitelist: ${ip}`);
 
-      // For API routes, return JSON error
-      if (request.nextUrl.pathname.startsWith("/api/admin")) {
-        return new NextResponse(
-          JSON.stringify({ error: "Access Denied - IP Not Allowed" }),
-          {
-            status: 403,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      // For pages, show error page
-      return new NextResponse("Access Denied - IP Not Allowed", {
-        status: 403,
-      });
+      // Return 404 for both API and pages (mysterious approach)
+      return NextResponse.rewrite(new URL("/404", request.url));
     }
 
     // Second check: Authentication cookie (skip for login page)
     if (request.nextUrl.pathname !== "/admin/login") {
       const authCookie = request.cookies.get("admin_auth");
       if (!authCookie || authCookie.value !== "authenticated") {
-        console.log(`[REDIRECT] No valid auth cookie - redirecting to login`);
+        console.log(`[404] No valid auth cookie - page not found`);
 
-        // For API routes, return 401
-        if (request.nextUrl.pathname.startsWith("/api/admin")) {
-          return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-
-        return NextResponse.redirect(new URL("/admin/login", request.url));
+        // Return 404 for unauthorized access (mysterious approach)
+        return NextResponse.rewrite(new URL("/404", request.url));
       }
     }
 
