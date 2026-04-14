@@ -30,7 +30,16 @@ export default function AdminDashboard() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...lottery,
+          title: lottery.title,
+          description: lottery.description,
+          price: lottery.price,
+          ticketsSold: lottery.ticketsSold,
+          maximumTickets: lottery.maximumTickets,
+          drawDate: lottery.drawDate,
+          images: lottery.images,
+          accountNumber: lottery.accountNumber,
+          accountName: lottery.accountName,
+          bankName: lottery.bankName,
           isHidden: !currentHidden,
         }),
       });
@@ -40,9 +49,12 @@ export default function AdminDashboard() {
             l.id === id ? { ...l, isHidden: !currentHidden } : l,
           ),
         );
+      } else {
+        alert("Төлөв өөрчлөхөд алдаа гарлаа");
       }
     } catch (error) {
       console.error("Error toggling visibility:", error);
+      alert("Төлөв өөрчлөхөд алдаа гарлаа");
     }
   };
 
@@ -68,6 +80,28 @@ export default function AdminDashboard() {
       router.push("/admin/login");
     } catch (error) {
       console.error("Error logging out:", error);
+    }
+  };
+
+  const handleExportTickets = async (lottery_id, lotteryTitle) => {
+    try {
+      const res = await fetch(
+        `/api/admin/lotteries/${lottery_id}/export-tickets`,
+      );
+      if (!res.ok) throw new Error("Export failed");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${lotteryTitle.replace(/[^a-z0-9]/gi, "_")}_tickets.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error exporting tickets:", error);
+      alert("Тасалбар экспортлоход алдаа гарлаа");
     }
   };
 
@@ -313,24 +347,28 @@ export default function AdminDashboard() {
           letter-spacing: 0.05em;
         }
 
-        .status-btn.hidden {
-          background: rgba(248, 113, 113, 0.1);
-          border-color: rgba(248, 113, 113, 0.3);
-          color: var(--red);
+        .status-btn.status-hidden {
+          background: rgba(248, 113, 113, 0.15);
+          border-color: rgba(248, 113, 113, 0.4);
+          color: #f87171;
+          font-weight: 600;
         }
 
-        .status-btn.hidden:hover {
-          background: rgba(248, 113, 113, 0.2);
+        .status-btn.status-hidden:hover {
+          background: rgba(248, 113, 113, 0.25);
+          border-color: #f87171;
         }
 
-        .status-btn.visible {
-          background: rgba(52, 211, 153, 0.1);
-          border-color: rgba(52, 211, 153, 0.3);
-          color: var(--green);
+        .status-btn.status-visible {
+          background: rgba(52, 211, 153, 0.15);
+          border-color: rgba(52, 211, 153, 0.4);
+          color: #34d399;
+          font-weight: 600;
         }
 
-        .status-btn.visible:hover {
-          background: rgba(52, 211, 153, 0.2);
+        .status-btn.status-visible:hover {
+          background: rgba(52, 211, 153, 0.25);
+          border-color: #34d399;
         }
 
         .action-row {
@@ -538,7 +576,7 @@ export default function AdminDashboard() {
                                 lottery.isHidden,
                               )
                             }
-                            className={`status-btn ${lottery.isHidden ? "hidden" : "visible"}`}
+                            className={`status-btn ${lottery.isHidden ? "status-hidden" : "status-visible"}`}
                           >
                             {lottery.isHidden ? "Нуусан" : "Ил"}
                           </button>
@@ -567,6 +605,19 @@ export default function AdminDashboard() {
                             >
                               Нэмэх
                             </Link>
+                            <button
+                              onClick={() =>
+                                handleExportTickets(lottery.id, lottery.title)
+                              }
+                              className="action-btn"
+                              style={{
+                                background: "rgba(147, 51, 234, 0.1)",
+                                border: "1px solid rgba(147, 51, 234, 0.3)",
+                                color: "#a855f7",
+                              }}
+                            >
+                              Экспорт
+                            </button>
                             <button
                               onClick={() => handleDelete(lottery.id)}
                               className="action-btn delete"
