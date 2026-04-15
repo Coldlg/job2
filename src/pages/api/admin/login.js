@@ -1,7 +1,15 @@
 import { serialize } from "cookie";
+import { SignJWT } from "jose";
+import bcrypt from "bcryptjs";
 
-// Store this in your .env file as: ADMIN_PASSWORD=your_secure_password
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+// Store hashed password in .env as: HASHED_PASSWORD=$2a$12$...
+// Generate hash: node scripts/generate-password-hash.js <your_password>
+const HASHED_PASSWORD = process.env.HASHED_PASSWORD;
+
+// JWT secret key
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || "fallback-secret-change-this",
+);
 
 // Rate limiting: simple in-memory store
 const loginAttempts = new Map();
@@ -25,8 +33,13 @@ export default async function handler(req, res) {
     if (attempts) {
       const timeSinceLastAttempt = Date.now() - attempts.lastAttempt;
 
-      if (attempts.count >= MAX_ATTEMPTS && timeSinceLastAttempt < LOCKOUT_TIME) {
-        const remainingTime = Math.ceil((LOCKOUT_TIME - timeSinceLastAttempt) / 60000);
+      if (
+        attempts.count >= MAX_ATTEMPTS &&
+        timeSinceLastAttempt < LOCKOUT_TIME
+      ) {
+        const remainingTime = Math.ceil(
+          (LOCKOUT_TIME - timeSinceLastAttempt) / 60000,
+        );
         return res.status(429).json({
           error: `Хэт олон оролдлого. ${remainingTime} минутын дараа дахин оролдоно уу.`,
         });
@@ -44,13 +57,27 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Нууц үг оруулна уу" });
     }
 
-    // Verify password
-    if (password === ADMIN_PASSWORD) {
+    // Verify password against hashed password
+    if (!HASHED_PASSWORD) {
+      console.error("[LOGIN ERROR] HASHED_PASSWORD not set in environment");
+      return res.status(500).json({ error: "Серверийн тохиргооны алдаа" });
+    }
+
+    const passwordValid = await bcrypt.compare(password, HASHED_PASSWORD);
+
+    if (passwordValid) {
       // Clear login attempts on success
       loginAttempts.delete(ip);
 
-      // Set secure cookie
-      const cookie = serialize("admin_auth", "authenticated", {
+      // Generate JWT token
+      const token = await new SignJWT({ sub: "admin", ip })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("1h")
+        .sign(JWT_SECRET);
+
+      // Set secure cookie with JWT token
+      const cookie = serialize("admin_auth", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
