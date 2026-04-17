@@ -96,6 +96,7 @@ export default async function handler(req, res) {
         count: current.count + 1,
         lastAttempt: Date.now(),
       });
+      console.log(`Hashed password is:  ${HASHED_PASSWORD}`);
 
       console.log(`[LOGIN FAILED] IP: ${ip} - Attempts: ${current.count + 1}`);
 
