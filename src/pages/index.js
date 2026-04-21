@@ -1,5 +1,6 @@
 import { Header } from "@/components/header";
 import { LotteryCard } from "@/components/LotteryCard";
+import { FAQSection } from "@/components/FAQSection";
 import prisma from "@/lib/prisma";
 
 export default function Home({ lotteries }) {
@@ -148,6 +149,8 @@ export default function Home({ lotteries }) {
             </div>
           )}
         </main>
+
+        <FAQSection />
       </div>
     </>
   );

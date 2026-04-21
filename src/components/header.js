@@ -161,7 +161,7 @@ export function Header() {
             </div>
             <div className="logo-text">
               <span className="logo-title">
-                <span className="accent">Арвай</span> Авто
+                <span className="accent">Арвай</span> Авто Худалдаа
               </span>
               <span className="logo-subtitle">Баталгаатай • Найдвартай</span>
             </div>
