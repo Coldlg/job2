@@ -35,7 +35,9 @@ function getTimeRemaining(targetDate) {
 export function LotteryCard({ lottery }) {
   const [copied, setCopied] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(() => getTimeRemaining(lottery.drawDate));
+  const [timeLeft, setTimeLeft] = useState(() =>
+    getTimeRemaining(lottery.drawDate),
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -50,13 +52,17 @@ export function LotteryCard({ lottery }) {
     ? lottery.images[currentImageIndex]
     : lottery.image || "https://placehold.co/600x400/png";
 
-  const progress = Math.min(100, Math.round((lottery.ticketsSold / lottery.maximumTickets) * 100));
+  const progress = Math.min(
+    100,
+    Math.round((lottery.ticketsSold / lottery.maximumTickets) * 100),
+  );
 
   const handleCopyAccount = async (e) => {
     e.stopPropagation();
     if (lottery.accountNumber) {
       try {
-        await navigator.clipboard.writeText(lottery.accountNumber);
+        const accountNumber = lottery.accountNumber.replace(/\D/g, "");
+        await navigator.clipboard.writeText(accountNumber);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
@@ -68,14 +74,18 @@ export function LotteryCard({ lottery }) {
   const nextImage = (e) => {
     e.stopPropagation();
     if (hasMultipleImages) {
-      setCurrentImageIndex((prev) => (prev === lottery.images.length - 1 ? 0 : prev + 1));
+      setCurrentImageIndex((prev) =>
+        prev === lottery.images.length - 1 ? 0 : prev + 1,
+      );
     }
   };
 
   const prevImage = (e) => {
     e.stopPropagation();
     if (hasMultipleImages) {
-      setCurrentImageIndex((prev) => (prev === 0 ? lottery.images.length - 1 : prev - 1));
+      setCurrentImageIndex((prev) =>
+        prev === 0 ? lottery.images.length - 1 : prev - 1,
+      );
     }
   };
 
@@ -100,11 +110,15 @@ export function LotteryCard({ lottery }) {
 
     if (isLeftSwipe) {
       if (hasMultipleImages) {
-        setCurrentImageIndex((prev) => (prev === lottery.images.length - 1 ? 0 : prev + 1));
+        setCurrentImageIndex((prev) =>
+          prev === lottery.images.length - 1 ? 0 : prev + 1,
+        );
       }
     } else if (isRightSwipe) {
       if (hasMultipleImages) {
-        setCurrentImageIndex((prev) => (prev === 0 ? lottery.images.length - 1 : prev - 1));
+        setCurrentImageIndex((prev) =>
+          prev === 0 ? lottery.images.length - 1 : prev - 1,
+        );
       }
     }
   };
@@ -169,7 +183,11 @@ export function LotteryCard({ lottery }) {
         .image-overlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(to top, rgba(11, 13, 20, 0.9), transparent);
+          background: linear-gradient(
+            to top,
+            rgba(11, 13, 20, 0.9),
+            transparent
+          );
         }
 
         .countdown-badge {
@@ -196,7 +214,9 @@ export function LotteryCard({ lottery }) {
           border-radius: 50%;
           cursor: pointer;
           opacity: 0;
-          transition: opacity 0.2s, background 0.2s;
+          transition:
+            opacity 0.2s,
+            background 0.2s;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -276,7 +296,11 @@ export function LotteryCard({ lottery }) {
           right: 0;
           width: 50px;
           height: 50px;
-          background: linear-gradient(135deg, rgba(99, 120, 255, 0.1), transparent);
+          background: linear-gradient(
+            135deg,
+            rgba(99, 120, 255, 0.1),
+            transparent
+          );
           border-radius: 0 0 0 100%;
         }
 
@@ -453,16 +477,11 @@ export function LotteryCard({ lottery }) {
           font-size: 12px;
           color: var(--text-muted);
           text-align: center;
-          display: -webkit-box;
-          -webkit-line-clamp: 1;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
+          white-space: pre-wrap;
+          word-wrap: break-word;
           cursor: pointer;
-          transition: -webkit-line-clamp 0.2s;
-        }
-
-        .description:hover {
-          -webkit-line-clamp: 3;
+          max-width: 70%;
+          margin: 0 auto;
         }
       `}</style>
 
@@ -477,9 +496,9 @@ export function LotteryCard({ lottery }) {
           <img src={currentImage} alt={lottery.title} draggable="false" />
           <div className="image-overlay" />
 
-          <div className="countdown-badge">
+          {/* <div className="countdown-badge">
             {timeLeft.isExpired ? "🎉 ДУУССАН" : `⏱️ ${timeLeft.days} Өдөр`}
-          </div>
+          </div> */}
 
           {hasMultipleImages && (
             <>
@@ -522,9 +541,7 @@ export function LotteryCard({ lottery }) {
         <div className="card-content">
           <h3 className="title">{lottery.title}</h3>
 
-          <div className="price-badge">
-            {lottery.price.toLocaleString()} ₮
-          </div>
+          <div className="price-badge">{lottery.price.toLocaleString()} ₮</div>
 
           {lottery.accountNumber && (
             <div className="account-section">

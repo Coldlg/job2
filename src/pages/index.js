@@ -1,11 +1,36 @@
+import Head from "next/head";
 import { Header } from "@/components/header";
 import { LotteryCard } from "@/components/LotteryCard";
+import { HowItWorks } from "@/components/HowItWorks";
 import { FAQSection } from "@/components/FAQSection";
+import { Footer } from "@/components/Footer";
+import { ScrollToFAQ } from "@/components/ScrollToFAQ";
 import prisma from "@/lib/prisma";
 
 export default function Home({ lotteries }) {
   return (
     <>
+      <Head>
+        <title>Итгэж ороод инээгээд хож</title>
+        <meta
+          name="description"
+          content="Арвай Авто Худалдаа. Амжиж ороод атгаад ав."
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta property="og:title" content="Итгэж ороод инээгээд хож" />
+        <meta
+          property="og:description"
+          content="Арвай Авто Худалдаа. Амжиж ороод атгаад ав."
+        />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Итгэж ороод инээгээд хож" />
+        <meta
+          name="twitter:description"
+          content="Арвай Авто Худалдаа. Амжиж ороод атгаад ав."
+        />
+      </Head>
+
       <style jsx global>{`
         .page-wrapper {
           min-height: 100vh;
@@ -74,6 +99,10 @@ export default function Home({ lotteries }) {
           color: var(--text-muted);
         }
 
+        #faq-section {
+          scroll-margin-top: 80px;
+        }
+
         .lottery-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -84,6 +113,10 @@ export default function Home({ lotteries }) {
           .lottery-grid {
             grid-template-columns: 1fr;
           }
+        }
+
+        #faq-section {
+          scroll-margin-top: 80px;
         }
       `}</style>
 
@@ -106,9 +139,7 @@ export default function Home({ lotteries }) {
               Сугалаанууд
             </div>
             <h1 className="page-title">Итгэж ороод инээгээд хож</h1>
-            <p className="page-sub">
-              Амжиж ороод атгаад ав
-            </p>
+            <p className="page-sub">Амжиж ороод атгаад ав</p>
           </div>
 
           <div className="lottery-grid">
@@ -150,7 +181,15 @@ export default function Home({ lotteries }) {
           )}
         </main>
 
-        <FAQSection />
+        <HowItWorks />
+
+        <div id="faq-section">
+          <FAQSection />
+        </div>
+
+        <Footer />
+
+        <ScrollToFAQ />
       </div>
     </>
   );
