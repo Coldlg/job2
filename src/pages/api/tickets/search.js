@@ -17,16 +17,33 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check if the search query contains non-numeric characters (name search)
+    // Check if the search query contains letters (contains search) or just numbers (exact match)
     const hasLetters = /[a-zA-Zа-яА-ЯөӨүҮ]/.test(phone);
+    const numbersOnly = phone.replace(/\D/g, "");
+
+    let whereClause = {
+      lottery_id: parseInt(lotteryId),
+    };
+
+    if (hasLetters) {
+      // Contains search for queries with letters
+      whereClause.phone_number = {
+        contains: phone,
+      };
+    } else {
+      // Exact match for numeric-only queries (must be exactly 8 digits)
+      if (numbersOnly.length !== 8) {
+        return res.status(400).json({
+          error: "Утасны дугаараа зөв хийнэ үү",
+        });
+      }
+      whereClause.phone_number = {
+        equals: numbersOnly,
+      };
+    }
 
     const tickets = await prisma.ticket.findMany({
-      where: {
-        lottery_id: parseInt(lotteryId),
-        phone_number: {
-          contains: phone, // Search by raw string (works for both phone and names)
-        },
-      },
+      where: whereClause,
       orderBy: {
         ticket_number: "asc",
       },

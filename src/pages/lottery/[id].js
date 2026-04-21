@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function LotteryTicketSearch({ lottery }) {
   const [phone, setPhone] = useState("");
-  const [tickets, setTickets] = useState(lottery.tickets || []);
+  const [tickets, setTickets] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -20,7 +20,7 @@ export default function LotteryTicketSearch({ lottery }) {
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!phone.trim()) {
-      setTickets(lottery.tickets || []);
+      setTickets([]);
       setSearched(false);
       return;
     }
@@ -49,7 +49,7 @@ export default function LotteryTicketSearch({ lottery }) {
 
   const handleClear = () => {
     setPhone("");
-    setTickets(lottery.tickets || []);
+    setTickets([]);
     setPage(1);
     setSearched(false);
     setError("");
@@ -734,6 +734,18 @@ export default function LotteryTicketSearch({ lottery }) {
             </div>
           )}
 
+          {/* Initial state - before search */}
+          {!searched && !loading && (
+            <div className="state-box">
+              <div className="state-icon">📱</div>
+              <div className="state-title">Утасны дугаараа оруулна уу</div>
+              <div className="state-sub">
+                Та тасалбараа харахын тулд утасны дугаараа оруулаад хайх товчийг
+                дарна уу
+              </div>
+            </div>
+          )}
+
           {/* No results */}
           {searched && !loading && tickets.length === 0 && !error && (
             <div className="state-box">
@@ -746,7 +758,7 @@ export default function LotteryTicketSearch({ lottery }) {
           )}
 
           {/* Results */}
-          {tickets.length > 0 && (
+          {searched && tickets.length > 0 && (
             <div>
               <div className="result-meta">
                 <p className="result-count">

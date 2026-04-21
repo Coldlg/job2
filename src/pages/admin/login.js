@@ -117,7 +117,9 @@ export default function AdminLogin() {
           font-family: "Sora", sans-serif;
           font-size: 15px;
           outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
         }
 
         .input:focus {
@@ -170,6 +172,22 @@ export default function AdminLogin() {
           opacity: 0.5;
           cursor: not-allowed;
         }
+
+        .spinner {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
       `}</style>
 
       <div className="login-page">
@@ -189,7 +207,9 @@ export default function AdminLogin() {
               </svg>
             </div>
             <h1 className="login-title">🔐 Админ</h1>
-            <p className="login-subtitle">Нэвтрэхийн тулд нууц үгээ оруулна уу</p>
+            <p className="login-subtitle">
+              Нэвтрэхийн тулд нууц үгээ оруулна уу
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -229,11 +249,7 @@ export default function AdminLogin() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="submit-btn"
-            >
+            <button type="submit" disabled={loading} className="submit-btn">
               {loading ? (
                 <>
                   <span className="spinner"></span>
