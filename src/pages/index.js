@@ -104,9 +104,9 @@ export default function Home({ lotteries }) {
               </svg>
               Сугалаанууд
             </div>
-            <h1 className="page-title">Идэвхтэй сугалаанууд</h1>
+            <h1 className="page-title">Итгэж ороод инээгээд хож</h1>
             <p className="page-sub">
-              Хамгийн шинэ боломжуудыг эндээс сонгоно уу
+              Амжиж ороод атгаад ав
             </p>
           </div>
 
