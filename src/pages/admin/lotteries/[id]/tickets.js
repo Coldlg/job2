@@ -110,9 +110,10 @@ export default function LotteryTickets() {
   };
 
   const formatDate = (isoString) => {
-    if (!isoString) return "—";
+    if (!isoString) return "N/A";
     const d = new Date(isoString);
     return d.toLocaleDateString("mn-MN", {
+      timeZone: "UTC",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -120,12 +121,14 @@ export default function LotteryTickets() {
   };
 
   const formatTime = (isoString) => {
-    if (!isoString) return "";
+    if (!isoString) return "N/A";
     const d = new Date(isoString);
     return d.toLocaleTimeString("mn-MN", {
+      timeZone: "UTC",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+      hour12: false,
     });
   };
 

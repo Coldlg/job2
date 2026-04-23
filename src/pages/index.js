@@ -139,7 +139,10 @@ export default function Home({ lotteries }) {
               Сугалаанууд
             </div>
             <h1 className="page-title">Итгэж ороод инээгээд хож</h1>
-            <p className="page-sub">Амжиж ороод атгаад ав</p>
+            <p className="page-sub">
+              Арван мянгаар автомашинтай болох алтан боломжийг арвай авто
+              худалдаа Танд олгож байна. Амжилт хүсье
+            </p>
           </div>
 
           <div className="lottery-grid">

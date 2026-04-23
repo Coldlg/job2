@@ -12,9 +12,7 @@ const ALLOWED_IPS = (process.env.ALLOWED_IPS || "::1,127.0.0.1")
 const SKIP_IP_CHECK = process.env.NODE_ENV === "development";
 
 // JWT secret key - should be set in .env
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-change-this",
-);
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 // Token expiration time
 const TOKEN_EXPIRY = "15m";
