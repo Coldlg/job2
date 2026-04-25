@@ -52,9 +52,44 @@ model Ticket {
   amount_paid    Decimal   @db.Decimal(10, 2)
   is_winner      Boolean   @default(false)
   created_at     DateTime  @default(now())
-  
+  import_batch_id Int?
+
   lottery        Lottery @relation(fields: [lottery_id], references: [id], onDelete: Cascade)
-  
+  importLog      ImportLog? @relation(fields: [import_batch_id], references: [id], onDelete: Cascade)
+
   @@unique([lottery_id, ticket_number])
   @@index([lottery_id])
+}
+
+model ImportLog {
+  id           Int      @id @default(autoincrement())
+  lottery_id   Int
+  ticket_count Int
+  start_ticket Int
+  end_ticket   Int
+  imported_at  DateTime @default(now())
+  tickets      Ticket[]
+
+  @@index([lottery_id])
+  @@index([imported_at])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  action      String   // IMPORT_TICKETS, EXPORT_TICKETS, CREATE_TICKET, UPDATE_TICKET, DELETE_TICKET, LOGIN, LOGOUT, CREATE_LOTTERY, UPDATE_LOTTERY, DELETE_LOTTERY
+  entity      String?  // Ticket, Lottery, Car, User
+  entity_id   Int?     // ID of the affected entity
+  lottery_id  Int?     // Related lottery ID (if applicable)
+  user_id     Int?     // User who performed the action (if authenticated)
+  user_email  String?  // Email of the user
+  metadata    Json?    // Additional data (e.g., old/new values, count, file name)
+  ip_address  String?  // IP address of the user
+  user_agent  String?  // Browser/device info
+  created_at  DateTime @default(now())
+
+  @@index([action])
+  @@index([entity])
+  @@index([entity_id])
+  @@index([lottery_id])
+  @@index([created_at])
 }

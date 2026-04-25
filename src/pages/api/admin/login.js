@@ -8,7 +8,7 @@ const HASHED_PASSWORD = process.env.HASHED_PASSWORD;
 
 // JWT secret key
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-change-this",
+  process.env.JWT_SECRET || "fallback_onoooo_noooot_secure",
 );
 
 // Rate limiting: simple in-memory store
