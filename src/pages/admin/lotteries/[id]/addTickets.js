@@ -41,10 +41,18 @@ export default function AddTickets() {
   };
 
   const extractPhoneNumber = (str) => {
-    if (!str || typeof str !== "string") return null;
-    const direct = str.match(/\+?976\d{8,9}/);
+    if (str === undefined || str === null) return null;
+    const value =
+      typeof str === "number"
+        ? String(str)
+        : typeof str === "string"
+          ? str
+          : null;
+    if (!value) return null;
+
+    const direct = value.match(/\+?976\d{8,9}/);
     if (direct) return direct[0];
-    const loose = str.match(/\d{8}/);
+    const loose = value.match(/\d{8}/);
     if (loose) return loose[0];
     return null;
   };
