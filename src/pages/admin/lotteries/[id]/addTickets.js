@@ -138,9 +138,9 @@ export default function AddTickets() {
             raw: row,
             rawDisplay: formatRowRaw(row),
             parsed: {
-              date: row[0] || "",
-              amount: row[1] || "",
-              phone: row[2] || "",
+              date: String(row[0] || ""),
+              amount: String(row[1] || ""),
+              phone: String(row[2] || ""),
             },
             isValid: false,
             isEdited: false,
@@ -151,9 +151,9 @@ export default function AddTickets() {
           continue;
         }
 
-        const dateStr = row[0] || "";
-        const amountStr = row[1] || "";
-        const phoneStr = row[2] || "";
+        const dateStr = String(row[0] || "");
+        const amountStr = String(row[1] || "");
+        const phoneStr = String(row[2] || "");
 
         const validation = validateRow(
           dateStr,
